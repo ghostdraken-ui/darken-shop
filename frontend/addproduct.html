@@ -51,14 +51,14 @@ document.getElementById('addForm').addEventListener('submit', function(e){
     },
     body: fd
   })
-  .then(res => res.text())
-  .then(msg => {
-    alert(msg);
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message || "Product added successfully");
     window.location.href = 'index.html';
   })
   .catch(err => {
     console.error(err);
-    alert('Failed to add product');
+    alert("Failed to add product");
   });
 });
 </script>

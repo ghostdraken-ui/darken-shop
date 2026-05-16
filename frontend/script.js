@@ -41,6 +41,10 @@ function checkout(){
     fetch("http://localhost:3000/pay", {
         method: "POST"
     })
-    .then(res => res.text())
-    .then(alert);
+    .then(res => res.json())
+    .then(data => alert(data.message || "Payment successful"))
+    .catch(err => {
+        console.error(err);
+        alert("Payment failed");
+    });
 }

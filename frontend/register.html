@@ -38,7 +38,12 @@ function formatPhoneNumber(input) {
 
 function register(){
   if (p.value !== cp.value) {
-    alert("Password don't match");
+    alert("Passwords don't match");
+    return;
+  }
+
+  if (!u.value || !p.value) {
+    alert("Username and password required");
     return;
   }
 
@@ -47,17 +52,23 @@ function register(){
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       username:u.value,
-      phoneNumber:ph.value,
-      password:p.value,
-      confirmPassword:cp.value
+      password:p.value
     })
   })
-
-  .then(res=>res.text())
-  .then(data=>{
-    alert(data);
-    window.location.href="login.html"; // ✅ LINK FIX
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      alert(data.error);
+    } else {
+      alert(data.message || "Registration successful");
+      window.location.href="login.html";
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Registration failed");
   });
+}
 }
 function togglePassword(id){
 const input = document.getElementById(id);
