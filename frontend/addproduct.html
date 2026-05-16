@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Add Product</title>
+  <link rel="stylesheet" href="addproductstyle.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="logo">🛍️ MyShop</div>
+  <div class="links">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+  </div>
+</header>
+
+<main class="container">
+  <h1>Add Product</h1>
+
+  <form id="addForm" enctype="multipart/form-data">
+    <p><input id="name" name="name" placeholder="Product name" required></p>
+    <p><input id="price" name="price" type="number" step="0.01" placeholder="Price" required></p>
+    <p><input id="image" name="image" type="file" accept="image/*" required></p>
+    <p><button type="submit">Add Product</button></p>
+  </form>
+
+</main>
+
+<script>
+document.getElementById('addForm').addEventListener('submit', function(e){
+  e.preventDefault();
+
+  const token = localStorage.getItem('token');
+  if(!token){
+    alert('Please log in to add a product');
+    window.location.href = 'login.html';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('name', document.getElementById('name').value);
+  fd.append('price', document.getElementById('price').value);
+  const file = document.getElementById('image').files[0];
+  if(file) fd.append('image', file);
+
+  fetch('http://localhost:3000/add-product', {
+    method: 'POST',
+    headers: {
+      'authorization': token
+    },
+    body: fd
+  })
+  .then(res => res.text())
+  .then(msg => {
+    alert(msg);
+    window.location.href = 'index.html';
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Failed to add product');
+  });
+});
+</script>
+
+</body>
+</html>
