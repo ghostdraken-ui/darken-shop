@@ -117,13 +117,17 @@ function adminOnly(req, res, next) {
   });
 }
 
+function onlyDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 // REGISTER
 app.post("/register", async (req, res) => {
   try {
     const { username, password, phone } = req.body;
     
-    if (!username || !password) {
-      return res.status(400).json({error: "Username and password required"});
+    if (!username || !password || !phone) {
+      return res.status(400).json({error: "Username, phone, and password required"});
     }
 
     const existing = await User.findOne({ username });
@@ -144,6 +148,34 @@ app.post("/register", async (req, res) => {
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Registration failed", details: err.message });
+  }
+});
+
+// RESET FORGOTTEN PASSWORD
+app.post("/forgot-password", async (req, res) => {
+  try {
+    const { username, phone, password } = req.body;
+
+    if (!username || !phone || !password) {
+      return res.status(400).json({ error: "Username, phone, and new password are required" });
+    }
+
+    if (password.length < 4) {
+      return res.status(400).json({ error: "Password must be at least 4 characters" });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user || onlyDigits(user.phone) !== onlyDigits(phone)) {
+      return res.status(401).json({ error: "Username and phone number do not match" });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    await user.save();
+
+    res.json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ error: "Failed to reset password" });
   }
 });
 
