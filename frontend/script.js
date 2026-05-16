@@ -1,12 +1,12 @@
 let cart = [];
 
-fetch("http://localhost:3000/products")
+fetch("/products")
 .then(res => res.json())
 .then(products => {
     products.forEach(p => {
         document.getElementById("products").innerHTML += `
             <div class="product">
-                <img src="http://localhost:3000/uploads/${p.image}">
+                <img src="/uploads/${p.image}">
                 <h3>${p.name}</h3>
                 <p><b>KES ${p.price}</b></p>
                 <p>Seller: ${p.owner}</p>
@@ -38,7 +38,7 @@ function updateCart(){
 }
 
 function checkout(){
-    fetch("http://localhost:3000/pay", {
+    fetch("/pay", {
         method: "POST"
     })
     .then(res => res.json())

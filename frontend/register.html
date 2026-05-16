@@ -47,7 +47,7 @@ function register(){
     return;
   }
 
-  fetch("http://localhost:3000/register",{
+  fetch("/register",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
@@ -68,7 +68,6 @@ function register(){
     console.error(err);
     alert("Registration failed");
   });
-}
 }
 function togglePassword(id){
 const input = document.getElementById(id);

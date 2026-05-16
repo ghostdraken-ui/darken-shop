@@ -10,6 +10,7 @@ const path = require("path");
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 const SECRET = "shop123";
 
@@ -19,7 +20,12 @@ if (!fs.existsSync("uploads")) {
 }
 
 // DATABASE
-mongoose.connect("mongodb://127.0.0.1:27017/darken shop");
+// Use a safe DB name (no spaces) so register + login hit the same DB.
+mongoose.connect("mongodb://127.0.0.1:27017/darken_shop").then(() => {
+  console.log("Connected to MongoDB (darken_shop)");
+}).catch((err) => {
+  console.error("MongoDB connection error:", err);
+});
 
 // IMAGE STORAGE
 const storage = multer.diskStorage({
@@ -82,8 +88,8 @@ app.post("/register", async (req, res) => {
 
     res.json({message: "Registered successfully"});
   } catch (err) {
-    console.error(err);
-    res.status(500).json({error: "Registration failed"});
+    console.error("Registration error:", err);
+    res.status(500).json({ error: "Registration failed", details: err.message });
   }
 });
 
@@ -105,8 +111,8 @@ app.post("/login", async (req, res) => {
     const token = jwt.sign({ username: user.username }, SECRET);
     res.json({ token });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({error: "Login failed"});
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Login failed", details: err.message });
   }
 });
 
