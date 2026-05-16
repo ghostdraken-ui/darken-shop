@@ -25,13 +25,56 @@
     <p><button type="submit">Add Product</button></p>
   </form>
 
+  <section class="my-products">
+    <div class="section-title">
+      <h2>Your Products</h2>
+      <button id="refreshProducts" type="button">Refresh</button>
+    </div>
+    <p id="productStatus" class="status-text">Loading your products...</p>
+    <div id="myProducts" class="my-products-grid"></div>
+  </section>
+
 </main>
 
 <script>
+const token = localStorage.getItem('token');
+const productStatus = document.getElementById('productStatus');
+const myProducts = document.getElementById('myProducts');
+
+function setProductStatus(message, isError = false) {
+  productStatus.textContent = message;
+  productStatus.className = isError ? 'status-text error' : 'status-text';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function money(value) {
+  return Number(value || 0).toLocaleString('en-KE', {
+    style: 'currency',
+    currency: 'KES'
+  });
+}
+
+async function readJsonResponse(res) {
+  const text = await res.text();
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (err) {
+    throw new Error('Server returned a web page instead of JSON. Start/restart the backend with: cd backend && node server.js');
+  }
+}
+
 document.getElementById('addForm').addEventListener('submit', function(e){
   e.preventDefault();
 
-  const token = localStorage.getItem('token');
   if(!token){
     alert('Please log in to add a product');
     window.location.href = 'login.html';
@@ -51,16 +94,93 @@ document.getElementById('addForm').addEventListener('submit', function(e){
     },
     body: fd
   })
-  .then(res => res.json())
+  .then(async res => {
+    const data = await readJsonResponse(res);
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to add product');
+    }
+    return data;
+  })
   .then(data => {
     alert(data.message || "Product added successfully");
-    window.location.href = 'index.html';
+    document.getElementById('addForm').reset();
+    loadMyProducts();
   })
   .catch(err => {
     console.error(err);
     alert("Failed to add product");
   });
 });
+
+async function loadMyProducts() {
+  if (!token) {
+    setProductStatus('Please log in to see your products.', true);
+    myProducts.innerHTML = '';
+    return;
+  }
+
+  try {
+    setProductStatus('Loading your products...');
+    const res = await fetch('/my-products', {
+      headers: {
+        authorization: token
+      }
+    });
+    const products = await readJsonResponse(res);
+
+    if (!res.ok) {
+      throw new Error(products.error || 'Failed to load your products');
+    }
+
+    if (!products.length) {
+      myProducts.innerHTML = '';
+      setProductStatus('You have not added any products yet.');
+      return;
+    }
+
+    myProducts.innerHTML = products.map(product => `
+      <article class="my-product">
+        <img src="/uploads/${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}">
+        <div>
+          <h3>${escapeHtml(product.name)}</h3>
+          <p>${money(product.price)}</p>
+          <button type="button" onclick="removeMyProduct('${product._id}')">Remove</button>
+        </div>
+      </article>
+    `).join('');
+    setProductStatus(`${products.length} product${products.length === 1 ? '' : 's'} added by you.`);
+  } catch (err) {
+    console.error(err);
+    setProductStatus(err.message || 'Failed to load your products.', true);
+  }
+}
+
+async function removeMyProduct(id) {
+  if (!token || !confirm('Remove this product?')) return;
+
+  try {
+    const res = await fetch(`/my-products/${id}`, {
+      method: 'DELETE',
+      headers: {
+        authorization: token
+      }
+    });
+    const data = await readJsonResponse(res);
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to remove product');
+    }
+
+    setProductStatus(data.message);
+    loadMyProducts();
+  } catch (err) {
+    console.error(err);
+    setProductStatus(err.message || 'Failed to remove product.', true);
+  }
+}
+
+document.getElementById('refreshProducts').addEventListener('click', loadMyProducts);
+loadMyProducts();
 </script>
 
 </body>

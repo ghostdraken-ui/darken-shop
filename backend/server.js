@@ -208,6 +208,47 @@ app.get("/products", async (req, res) => {
   res.json(products);
 });
 
+// GET PRODUCTS ADDED BY THE LOGGED-IN USER
+app.get("/my-products", auth, async (req, res) => {
+  try {
+    const products = await Product.find({ owner: req.user.username });
+    res.json(products);
+  } catch (err) {
+    console.error("My products error:", err);
+    res.status(500).json({ error: "Failed to load your products" });
+  }
+});
+
+// REMOVE A PRODUCT ADDED BY THE LOGGED-IN USER
+app.delete("/my-products/:id", auth, async (req, res) => {
+  try {
+    const product = await Product.findOne({
+      _id: req.params.id,
+      owner: req.user.username
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found for this user" });
+    }
+
+    await Product.findByIdAndDelete(product._id);
+
+    if (product.image) {
+      const imagePath = path.join(uploadDir, product.image);
+      fs.unlink(imagePath, (err) => {
+        if (err && err.code !== "ENOENT") {
+          console.error("Failed to remove product image:", err);
+        }
+      });
+    }
+
+    res.json({ message: "Product removed successfully" });
+  } catch (err) {
+    console.error("Remove my product error:", err);
+    res.status(500).json({ error: "Failed to remove product" });
+  }
+});
+
 // ADMIN: VIEW DATABASE DATA
 app.get("/admin/data", adminOnly, async (req, res) => {
   try {
