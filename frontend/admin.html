@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="adminstyle.css">
+</head>
+<body class="auth-pending">
+  <header class="navbar">
+    <div class="logo">MyShop Admin</div>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <a href="addproduct.html">Sell</a>
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+      <button id="logoutBtn" type="button">Logout</button>
+    </nav>
+  </header>
+
+  <main id="adminApp" hidden>
+    <section class="hero">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p class="muted">View database records, add users/products, remove data, and preview every page.</p>
+      </div>
+      <button id="refreshBtn" type="button">Refresh Data</button>
+    </section>
+
+    <p id="status" class="status">Loading admin data...</p>
+
+    <section class="stats">
+      <div class="stat">Users <strong id="userCount">0</strong></div>
+      <div class="stat">Products <strong id="productCount">0</strong></div>
+      <div class="stat">Reviews <strong id="reviewCount">0</strong></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Add User</h2>
+        <form id="userForm">
+          <input id="newUsername" placeholder="Username" required>
+          <input id="newPhone" type="tel" placeholder="Phone number">
+          <input id="newPassword" type="password" placeholder="Password" required>
+          <label class="check-row"><input id="newIsAdmin" type="checkbox"> Admin user</label>
+          <button type="submit">Add User</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <h2>Add Product</h2>
+        <form id="productForm" enctype="multipart/form-data">
+          <input id="productName" name="name" placeholder="Product name" required>
+          <input id="productPrice" name="price" type="number" step="0.01" min="0" placeholder="Price" required>
+          <input id="productImage" name="image" type="file" accept="image/*" required>
+          <button type="submit">Add Product</button>
+        </form>
+      </article>
+
+      <article class="panel full">
+        <h2>Products</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Owner</th>
+                <th>Reviews</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel full">
+        <h2>Users</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>User ID</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel full">
+        <h2>Pages</h2>
+        <div class="page-list" id="pageList"></div>
+        <div class="preview-actions">
+          <p class="muted" id="currentPage">Previewing index.html</p>
+          <a id="openPage" href="index.html" target="_blank" rel="noopener">Open Page</a>
+        </div>
+        <iframe id="pageFrame" src="index.html" title="Page preview"></iframe>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    let token = localStorage.getItem("token");
+    const adminApp = document.getElementById("adminApp");
+    const statusEl = document.getElementById("status");
+    const usersTable = document.getElementById("usersTable");
+    const productsTable = document.getElementById("productsTable");
+    const userCount = document.getElementById("userCount");
+    const productCount = document.getElementById("productCount");
+    const reviewCount = document.getElementById("reviewCount");
+    const pageFrame = document.getElementById("pageFrame");
+    const currentPage = document.getElementById("currentPage");
+    const openPage = document.getElementById("openPage");
+
+    const pages = [
+      { name: "Home", file: "index.html" },
+      { name: "Login", file: "login.html" },
+      { name: "Register", file: "register.html" },
+      { name: "Sell", file: "addproduct.html" },
+      { name: "Admin", file: "admin.html" }
+    ];
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.borderLeftColor = isError ? "#dc2626" : "#2563eb";
+    }
+
+    function authHeaders(extraHeaders = {}) {
+      return {
+        ...extraHeaders,
+        authorization: token
+      };
+    }
+
+    function requireLogin() {
+      if (!token) {
+        setStatus("Please log in first. Admin data and actions need a login token.", true);
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString("en-KE", {
+        style: "currency",
+        currency: "KES"
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderTables(data) {
+      const users = data.users || [];
+      const products = data.products || [];
+      const reviews = products.reduce((total, product) => total + (product.reviews || []).length, 0);
+
+      userCount.textContent = users.length;
+      productCount.textContent = products.length;
+      reviewCount.textContent = reviews;
+
+      productsTable.innerHTML = products.map(product => `
+        <tr>
+          <td>${product.image ? `<img src="/uploads/${escapeHtml(product.image)}" alt="${escapeHtml(product.name || "Product")}">` : "No image"}</td>
+          <td>${escapeHtml(product.name)}</td>
+          <td>${money(product.price)}</td>
+          <td>${escapeHtml(product.owner)}</td>
+          <td>${(product.reviews || []).length}</td>
+          <td><button class="danger" type="button" onclick="deleteProduct('${product._id}')">Delete</button></td>
+        </tr>
+      `).join("") || `<tr><td colspan="6">No products found.</td></tr>`;
+
+      usersTable.innerHTML = users.map(user => `
+        <tr>
+          <td>${escapeHtml(user.username)}</td>
+          <td>${escapeHtml(user.phone)}</td>
+          <td>${user.isAdmin ? "Admin" : "User"}</td>
+          <td>${user._id}</td>
+          <td>
+            <div class="action-row">
+              <button type="button" onclick="resetUserPassword('${user._id}')">Reset Password</button>
+              <button class="danger" type="button" onclick="deleteUser('${user._id}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="5">No users found.</td></tr>`;
+    }
+
+    async function loadData() {
+      if (!requireLogin()) return;
+
+      try {
+        setStatus("Loading admin data...");
+        const res = await fetch("/admin/data", {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+            return;
+          }
+
+          if (res.status === 403) {
+            setStatus("Only admin users can open this page.", true);
+            window.location.href = "index.html";
+            return;
+          }
+
+          throw new Error(data.error || "Failed to load admin data");
+        }
+
+        document.body.classList.remove("auth-pending");
+        adminApp.hidden = false;
+        renderTables(data);
+        setStatus("Admin data loaded.");
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to load admin data.", true);
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!requireLogin() || !confirm("Delete this product?")) return;
+
+      try {
+        const res = await fetch(`/admin/products/${id}`, {
+          method: "DELETE",
+          headers: authHeaders()
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to delete product");
+        }
+
+        setStatus(data.message);
+        loadData();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to delete product.", true);
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!requireLogin() || !confirm("Delete this user?")) return;
+
+      try {
+        const res = await fetch(`/admin/users/${id}`, {
+          method: "DELETE",
+          headers: authHeaders()
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to delete user");
+        }
+
+        setStatus(data.message);
+        loadData();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to delete user.", true);
+      }
+    }
+
+    async function resetUserPassword(id) {
+      if (!requireLogin()) return;
+
+      const password = prompt("Enter the user's new password:");
+      if (!password) return;
+
+      try {
+        const res = await fetch(`/admin/users/${id}/reset-password`, {
+          method: "PUT",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to reset password");
+        }
+
+        setStatus(data.message);
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to reset password.", true);
+      }
+    }
+
+    document.getElementById("userForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!requireLogin()) return;
+
+      try {
+        const res = await fetch("/admin/users", {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            username: document.getElementById("newUsername").value,
+            phone: document.getElementById("newPhone").value,
+            password: document.getElementById("newPassword").value,
+            isAdmin: document.getElementById("newIsAdmin").checked
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to add user");
+        }
+
+        event.target.reset();
+        setStatus(data.message);
+        loadData();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to add user.", true);
+      }
+    });
+
+    document.getElementById("productForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!requireLogin()) return;
+
+      try {
+        const formData = new FormData();
+        formData.append("name", document.getElementById("productName").value);
+        formData.append("price", document.getElementById("productPrice").value);
+        formData.append("image", document.getElementById("productImage").files[0]);
+
+        const res = await fetch("/add-product", {
+          method: "POST",
+          headers: authHeaders(),
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to add product");
+        }
+
+        event.target.reset();
+        setStatus(data.message);
+        loadData();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Failed to add product.", true);
+      }
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("isAdmin");
+      token = null;
+      setStatus("Logged out. Log in again to use admin actions.", true);
+      window.location.href = "login.html";
+    });
+
+    document.getElementById("pageList").innerHTML = pages.map(page => (
+      `<button type="button" onclick="previewPage('${page.file}')">${page.name}</button>`
+    )).join("");
+
+    function previewPage(file) {
+      pageFrame.src = file;
+      currentPage.textContent = `Previewing ${file}`;
+      openPage.href = file;
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
