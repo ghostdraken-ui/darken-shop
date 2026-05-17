@@ -47,6 +47,13 @@ body {
     padding: 20px;
 }
 
+.product-status {
+    color: #49095d;
+    font-weight: bold;
+    margin: 20px 20px 0;
+    text-align: center;
+}
+
 /* PRODUCT CARD */
 .product {
     background: white;
@@ -71,15 +78,4 @@ body {
     margin-top: 5px;
     cursor: pointer;
     width: 100%;
-}
-
-/* CART */
-.cart {
-    position: fixed;
-    right: 10px;
-    top: 120px;
-    width: 200px;
-    background: white;
-    padding: 10px;
-    box-shadow: 0 0 10px gray;
 }

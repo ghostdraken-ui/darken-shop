@@ -12,12 +12,13 @@
 <header class="navbar">
     <div class="logo">🛍️ MyShop</div>
 
-    <input type="text" placeholder="Search products..." class="search">
+    <input id="searchInput" type="text" placeholder="Search products..." class="search">
 
     <div class="links">
         <a href="login.html">Login</a>
         <a href="register.html">Register</a>
         <a href="addproduct.html">Sell</a>
+        <a href="cart.html">Cart</a>
     </div>
 </header>
 
@@ -28,15 +29,8 @@
 </section>
 
 <!-- PRODUCTS GRID -->
+<p id="productStatus" class="product-status"></p>
 <section id="products" class="product-grid"></section>
-
-<!-- CART -->
-<div class="cart">
-    <h2>Cart</h2>
-    <ul id="cart"></ul>
-    <h3 id="total"></h3>
-    <button onclick="checkout()">Checkout</button>
-</div>
 
 <script src="script.js"></script>
 

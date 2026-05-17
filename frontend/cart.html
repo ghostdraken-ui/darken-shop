@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart | MyShop</title>
+  <link rel="stylesheet" href="cartstyle.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">MyShop</div>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <a href="addproduct.html">Sell</a>
+      <a href="login.html">Login</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="page-title">
+      <div>
+        <h1>Shopping Cart</h1>
+        <p>Add products, remove anything you do not want, and checkout when ready.</p>
+      </div>
+      <div id="cartCount" class="cart-count">0 items</div>
+    </section>
+
+    <section class="layout">
+      <section class="panel cart-panel">
+        <h2>Your Cart</h2>
+        <div id="cartItems" class="cart-list"></div>
+        <div class="summary">
+          <div class="summary-row">
+            <span>Total</span>
+            <span id="total">KES 0</span>
+          </div>
+          <button id="checkoutBtn" class="checkout-btn" type="button">Checkout</button>
+          <button id="clearBtn" class="clear-btn" type="button">Clear Cart</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel recommendations-panel">
+      <div class="section-heading">
+        <h2>Recommendations</h2>
+        <p id="recommendationStatus" class="status">Loading recommendations...</p>
+      </div>
+      <div id="recommendations" class="product-grid"></div>
+    </section>
+  </main>
+
+  <script>
+    const CART_KEY = 'myshopCart';
+    const recommendationsEl = document.getElementById('recommendations');
+    const cartItemsEl = document.getElementById('cartItems');
+    const recommendationStatusEl = document.getElementById('recommendationStatus');
+    const cartCountEl = document.getElementById('cartCount');
+    const totalEl = document.getElementById('total');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let cart = loadCart();
+    let allProducts = [];
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString('en-KE', {
+        style: 'currency',
+        currency: 'KES'
+      });
+    }
+
+    function imageSrc(image) {
+      const value = String(image || '').trim();
+
+      if (!value) {
+        return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22 viewBox=%220 0 300 200%22%3E%3Crect width=%22300%22 height=%22200%22 fill=%22%23eadcf5%22/%3E%3Ctext x=%22150%22 y=%22106%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2216%22 fill=%22%2367447c%22%3ENo image%3C/text%3E%3C/svg%3E';
+      }
+
+      if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return encodeURI(value);
+      }
+
+      return `/uploads/${encodeURIComponent(value)}`;
+    }
+
+    function loadCart() {
+      try {
+        return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveCart() {
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    }
+
+    function addToCart(product) {
+      cart.push({
+        _id: product._id,
+        name: product.name,
+        price: Number(product.price) || 0,
+        image: product.image,
+        owner: product.owner
+      });
+      saveCart();
+      renderCart();
+      renderRecommendations();
+    }
+
+    function removeFromCart(index) {
+      cart.splice(index, 1);
+      saveCart();
+      renderCart();
+      renderRecommendations();
+    }
+
+    function clearCart() {
+      if (!cart.length) return;
+      cart = [];
+      saveCart();
+      renderCart();
+      renderRecommendations();
+    }
+
+    function renderRecommendations() {
+      const cartIds = new Set(cart.map(item => item._id).filter(Boolean));
+      const products = allProducts.filter(product => !cartIds.has(product._id));
+
+      if (!products.length) {
+        recommendationStatusEl.textContent = allProducts.length
+          ? 'No more recommendations right now.'
+          : 'No recommendations available yet.';
+        recommendationsEl.innerHTML = '';
+        return;
+      }
+
+      recommendationStatusEl.textContent = '';
+      recommendationsEl.innerHTML = products.map((product, index) => `
+        <article class="product">
+          <img src="${escapeHtml(imageSrc(product.image))}" alt="${escapeHtml(product.name)}">
+          <h3>${escapeHtml(product.name)}</h3>
+          <p><b>${money(product.price)}</b></p>
+          <p>Seller: ${escapeHtml(product.owner)}</p>
+          <button type="button" data-index="${index}">Add to Cart</button>
+        </article>
+      `).join('');
+
+      recommendationsEl.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', () => addToCart(products[button.dataset.index]));
+      });
+    }
+
+    function renderCart() {
+      const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      const countText = `${cart.length} item${cart.length === 1 ? '' : 's'}`;
+
+      cartCountEl.textContent = countText;
+      totalEl.textContent = money(total);
+      checkoutBtn.disabled = cart.length === 0;
+      clearBtn.disabled = cart.length === 0;
+
+      if (!cart.length) {
+        cartItemsEl.innerHTML = '<p class="empty">Your cart is empty.</p>';
+        return;
+      }
+
+      cartItemsEl.innerHTML = cart.map((item, index) => `
+        <article class="cart-item">
+          <img src="${escapeHtml(imageSrc(item.image))}" alt="${escapeHtml(item.name)}">
+          <div>
+            <h3>${escapeHtml(item.name)}</h3>
+            <p>${money(item.price)}</p>
+          </div>
+          <button class="remove-btn" type="button" data-index="${index}">Remove</button>
+        </article>
+      `).join('');
+
+      cartItemsEl.querySelectorAll('.remove-btn').forEach(button => {
+        button.addEventListener('click', () => removeFromCart(Number(button.dataset.index)));
+      });
+    }
+
+    async function loadRecommendations() {
+      try {
+        const res = await fetch('/products');
+        const products = await res.json();
+
+        if (!res.ok) {
+          throw new Error(products.error || 'Failed to load products');
+        }
+
+        allProducts = products;
+        renderRecommendations();
+      } catch (err) {
+        console.error(err);
+        recommendationStatusEl.textContent = 'Failed to load recommendations. Start the backend and refresh this page.';
+      }
+    }
+
+    async function checkout() {
+      if (!cart.length) {
+        alert('Your cart is empty');
+        return;
+      }
+
+      try {
+        const res = await fetch('/pay', { method: 'POST' });
+        const text = await res.text();
+
+        if (!res.ok) {
+          throw new Error(text || 'Payment failed');
+        }
+
+        alert(text || 'Payment successful');
+        clearCart();
+      } catch (err) {
+        console.error(err);
+        alert('Payment failed');
+      }
+    }
+
+    checkoutBtn.addEventListener('click', checkout);
+    clearBtn.addEventListener('click', clearCart);
+
+    renderCart();
+    loadRecommendations();
+  </script>
+</body>
+</html>
