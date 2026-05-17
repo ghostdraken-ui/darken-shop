@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | MyShop</title>
+  <link rel="stylesheet" href="cartstyle.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">MyShop</div>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <a href="cart.html">Cart</a>
+      <a href="addproduct.html">Sell</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="page-title">
+      <div>
+        <h1>Checkout</h1>
+        <p>Confirm your order details and complete payment.</p>
+      </div>
+      <div id="cartCount" class="cart-count">0 items</div>
+    </section>
+
+    <section class="checkout-layout">
+      <form id="checkoutForm" class="panel checkout-form">
+        <h2>Delivery Details</h2>
+
+        <label>
+          Full name
+          <input id="fullName" type="text" placeholder="Your full name" required>
+        </label>
+
+        <label>
+          Phone number
+          <input id="phone" type="tel" placeholder="07..." required>
+        </label>
+
+        <label>
+          Delivery location
+          <input id="location" type="text" placeholder="Town, estate, or pickup point" required>
+        </label>
+
+        <label>
+          Payment method
+          <select id="paymentMethod" required>
+            <option value="mpesa">M-Pesa</option>
+            <option value="cash">Cash on delivery</option>
+            <option value="card">Card</option>
+          </select>
+        </label>
+
+        <label>
+          Order notes
+          <textarea id="notes" rows="4" placeholder="Optional delivery notes"></textarea>
+        </label>
+
+        <button id="placeOrderBtn" class="checkout-btn" type="submit">Place Order</button>
+        <p id="checkoutStatus" class="status"></p>
+      </form>
+
+      <aside class="panel order-summary">
+        <h2>Order Summary</h2>
+        <div id="orderItems" class="cart-list"></div>
+        <div class="summary checkout-summary">
+          <div class="summary-row">
+            <span>Total</span>
+            <span id="orderTotal">KES 0</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const CART_KEY = 'myshopCart';
+    const cartCountEl = document.getElementById('cartCount');
+    const orderItemsEl = document.getElementById('orderItems');
+    const orderTotalEl = document.getElementById('orderTotal');
+    const checkoutForm = document.getElementById('checkoutForm');
+    const checkoutStatus = document.getElementById('checkoutStatus');
+    const placeOrderBtn = document.getElementById('placeOrderBtn');
+
+    let cart = loadCart();
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString('en-KE', {
+        style: 'currency',
+        currency: 'KES'
+      });
+    }
+
+    function imageSrc(image) {
+      const value = String(image || '').trim();
+
+      if (!value) {
+        return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22 viewBox=%220 0 300 200%22%3E%3Crect width=%22300%22 height=%22200%22 fill=%22%23eadcf5%22/%3E%3Ctext x=%22150%22 y=%22106%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2216%22 fill=%22%2367447c%22%3ENo image%3C/text%3E%3C/svg%3E';
+      }
+
+      if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return encodeURI(value);
+      }
+
+      return `/uploads/${encodeURIComponent(value)}`;
+    }
+
+    function loadCart() {
+      try {
+        return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveCart() {
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    }
+
+    function renderOrder() {
+      const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      cartCountEl.textContent = `${cart.length} item${cart.length === 1 ? '' : 's'}`;
+      orderTotalEl.textContent = money(total);
+
+      if (!cart.length) {
+        orderItemsEl.innerHTML = '<p class="empty">Your cart is empty. Add products before checkout.</p>';
+        placeOrderBtn.disabled = true;
+        return;
+      }
+
+      placeOrderBtn.disabled = false;
+      orderItemsEl.innerHTML = cart.map(item => `
+        <article class="cart-item checkout-item">
+          <img src="${escapeHtml(imageSrc(item.image))}" alt="${escapeHtml(item.name)}">
+          <div>
+            <h3>${escapeHtml(item.name)}</h3>
+            <p>${money(item.price)}</p>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    async function placeOrder(event) {
+      event.preventDefault();
+
+      if (!cart.length) {
+        checkoutStatus.textContent = 'Your cart is empty.';
+        return;
+      }
+
+      placeOrderBtn.disabled = true;
+      checkoutStatus.textContent = 'Processing payment...';
+
+      try {
+        const res = await fetch('/pay', { method: 'POST' });
+        const text = await res.text();
+
+        if (!res.ok) {
+          throw new Error(text || 'Payment failed');
+        }
+
+        cart = [];
+        saveCart();
+        renderOrder();
+        checkoutForm.reset();
+        checkoutStatus.textContent = text || 'Order placed successfully.';
+        alert(text || 'Order placed successfully');
+      } catch (err) {
+        console.error(err);
+        placeOrderBtn.disabled = false;
+        checkoutStatus.textContent = 'Payment failed. Please try again.';
+      }
+    }
+
+    checkoutForm.addEventListener('submit', placeOrder);
+    renderOrder();
+  </script>
+</body>
+</html>

@@ -207,26 +207,13 @@
       }
     }
 
-    async function checkout() {
+    function checkout() {
       if (!cart.length) {
         alert('Your cart is empty');
         return;
       }
 
-      try {
-        const res = await fetch('/pay', { method: 'POST' });
-        const text = await res.text();
-
-        if (!res.ok) {
-          throw new Error(text || 'Payment failed');
-        }
-
-        alert(text || 'Payment successful');
-        clearCart();
-      } catch (err) {
-        console.error(err);
-        alert('Payment failed');
-      }
+      window.location.href = 'checkout.html';
     }
 
     checkoutBtn.addEventListener('click', checkout);
