@@ -41,6 +41,10 @@ function imageSrc(image) {
     return `/uploads/${encodeURIComponent(value)}`;
 }
 
+function productKey(product) {
+    return product._id || `${product.name || 'product'}-${product.owner || 'seller'}-${product.price || 0}`;
+}
+
 fetch("/products")
 .then(res => res.json())
 .then(products => {
@@ -65,6 +69,8 @@ function renderProducts(products) {
     productStatus.textContent = "";
 
     products.forEach((p, index) => {
+        const reviewKey = productKey(p);
+
         productsEl.innerHTML += `
             <div class="product">
                 <img src="${escapeHtml(imageSrc(p.image))}" alt="${escapeHtml(p.name)}">
@@ -72,6 +78,9 @@ function renderProducts(products) {
                 <p><b>KES ${Number(p.price || 0)}</b></p>
                 <p>Seller: ${escapeHtml(p.owner)}</p>
 
+                <a class="details-link" href="review.html?product=${encodeURIComponent(reviewKey)}">
+                    View Details
+                </a>
                 <button type="button" data-index="${index}">
                     Add to Cart
                 </button>

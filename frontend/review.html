@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Review | Darken Shop</title>
+    <link rel="stylesheet" href="reviewstyle.css">
+    
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">darkenshop</div>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <a href="cart.html">Cart</a>
+      <a href="addproduct.html">Sell</a>
+      <a href="login.html">Login</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="page-title">
+      <div>
+        <h1>Product Reviews</h1>
+        <p>Read reviews and see personalized recommendations.</p>
+      </div>
+    </section>
+
+    <section class="layout">
+      <aside id="productDetail" class="panel detail">
+        <p class="empty">Loading product details...</p>
+      </aside>
+    </section>
+  </main>
+
+
+  <script>
+    const CART_KEY = 'myshopCart';
+    const detailEl = document.getElementById('productDetail');
+
+    let cart = loadCart();
+    let selectedProduct = null;
+
+    const requestedProductId = new URLSearchParams(window.location.search).get('product');
+
+
+    function loadCart() {
+      try {
+        return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveCart() {
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString('en-KE', {
+        style: 'currency',
+        currency: 'KES'
+      });
+    }
+
+    function imageSrc(image) {
+      const value = String(image || '').trim();
+
+      if (!value) {
+        return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22 viewBox=%220 0 300 200%22%3E%3Crect width=%22300%22 height=%22200%22 fill=%22%23eadcf5%22/%3E%3Ctext x=%22150%22 y=%22106%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2216%22 fill=%22%2367447c%22%3ENo image%3C/text%3E%3C/svg%3E';
+      }
+
+      if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return encodeURI(value);
+      }
+
+      return `/uploads/${encodeURIComponent(value)}`;
+    }
+
+    function productKey(product) {
+      return product._id || `${product.name || 'product'}-${product.owner || 'seller'}-${product.price || 0}`;
+    }
+
+    function buildRecommendations(product) {
+      const reviews = Array.isArray(product.reviews) ? product.reviews : [];
+      const ratings = reviews
+        .map(r => Number(r.rating))
+        .filter(n => Number.isFinite(n) && n >= 1 && n <= 5);
+
+      const avg = ratings.length
+        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+        : null;
+
+      const hasPositiveText = reviews.some(r =>
+        String(r.comment || '').toLowerCase().match(/good|great|excellent|love|fast|worth|quality|amazing|recommended/i)
+      );
+      const hasNegativeText = reviews.some(r =>
+        String(r.comment || '').toLowerCase().match(/bad|poor|slow|broken|worst|refund|not work|damaged/i)
+      );
+
+      const bullets = [];
+
+      if (avg !== null) {
+        if (avg >= 4.2) {
+          bullets.push('Highly rated: this product tends to satisfy most customers.');
+        } else if (avg >= 3.6) {
+          bullets.push('Generally positive: expect good value with minor tradeoffs.');
+        } else {
+          bullets.push('Mixed feedback: consider checking reviews carefully before buying.');
+        }
+      } else {
+        bullets.push('No ratings yet: be the first to review after using the product.');
+      }
+
+      if (hasPositiveText) bullets.push('Common positives: customers often mention quality and overall experience.');
+      if (hasNegativeText) bullets.push('Common concerns: scan recent comments for recurring issues.');
+
+      if (!bullets.length) {
+        bullets.push('Check the latest reviews for the most up-to-date feedback.');
+      }
+
+      // Lightweight “also consider” copy (no dependency on other products in this page)
+      bullets.push('Recommendation: if you’re deciding, compare this product’s description/price against similar options and filter by user feedback.');
+
+      const itemsHtml = bullets.map(text => `
+        <li class="rec-item">${escapeHtml(text)}</li>
+      `).join('');
+
+      return `
+        <div class="recommendations">
+          <h3>Recommendations</h3>
+          <ul class="rec-list">${itemsHtml}</ul>
+        </div>
+      `;
+    }
+
+
+    function renderDetail(product) {
+      selectedProduct = product;
+
+      const description = product.description || product.details || 'No description has been added for this product yet.';
+      const reviews = Array.isArray(product.reviews) ? product.reviews : [];
+
+      const reviewList = reviews.length
+        ? reviews.map(review => `
+          <article class="review">
+            <div class="review-head">
+              <strong>${escapeHtml(review.user || 'Customer')} rated ${escapeHtml(review.rating || '-')} / 5</strong>
+            </div>
+            <p>${escapeHtml(review.comment || '')}</p>
+          </article>
+        `).join('')
+        : '<p class="empty">No reviews yet.</p>';
+
+      detailEl.innerHTML = `
+        <img class="detail-image" src="${escapeHtml(imageSrc(product.image))}" alt="${escapeHtml(product.name)}">
+        <h2>${escapeHtml(product.name)}</h2>
+        <div class="price">${money(product.price)}</div>
+        <div class="detail-meta">
+          <span><strong>Seller:</strong> ${escapeHtml(product.owner || 'Unknown')}</span>
+          <span><strong>Product ID:</strong> ${escapeHtml(product._id || 'Not available')}</span>
+        </div>
+        <p class="description">${escapeHtml(description)}</p>
+        <button id="addToCartBtn" type="button">Add to Cart</button>
+
+        <section class="reviews">
+          <h2>Reviews</h2>
+          <div class="reviews-grid">
+            <div class="reviews-list">
+              <div>${reviewList}</div>
+            </div>
+          </div>
+
+          <div class="recommendations-wrap" id="recommendations">
+            ${buildRecommendations(product)}
+          </div>
+
+          <form id="reviewForm" class="review-form">
+            <div class="form-row">
+              <input id="ratingInput" type="number" min="1" max="5" placeholder="Rating 1-5" required>
+              <button type="submit" class="submit-btn">Submit Review</button>
+            </div>
+            <textarea id="commentInput" placeholder="Write a review..." required></textarea>
+          </form>
+        </section>
+      `;
+
+      document.getElementById('addToCartBtn').addEventListener('click', () => addToCart(product));
+      document.getElementById('reviewForm').addEventListener('submit', submitReview);
+    }
+
+
+    function addToCart(product) {
+      cart.push({
+        _id: product._id,
+        name: product.name,
+        price: Number(product.price) || 0,
+        image: product.image,
+        owner: product.owner
+      });
+      saveCart();
+      alert('Product added to cart');
+    }
+
+    async function submitReview(event) {
+      event.preventDefault();
+
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        alert('Please log in to add a review');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      if (!selectedProduct || !selectedProduct._id) {
+        alert('This product cannot be reviewed yet');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/review/${selectedProduct._id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            authorization: token
+          },
+          body: JSON.stringify({
+            rating: document.getElementById('ratingInput').value,
+            comment: document.getElementById('commentInput').value
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to add review');
+        }
+
+        alert(data.message || 'Review added successfully');
+        await loadProductFromQuery();
+
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to add review');
+      }
+    }
+
+    async function loadProductFromQuery() {
+      try {
+        const res = await fetch('/products');
+        const products = await res.json();
+
+        if (!res.ok) {
+          throw new Error(products.error || 'Failed to load products');
+        }
+
+        if (!products.length) {
+          detailEl.innerHTML = '<p class="empty">No products available.</p>';
+          return;
+        }
+
+        // product query is expected to match productKey(product)
+        const match = requestedProductId
+          ? products.find(p => productKey(p) === requestedProductId)
+          : products[0];
+
+        if (!match) {
+          detailEl.innerHTML = '<p class="empty">Product not found. Check the product parameter in the URL.</p>';
+          return;
+        }
+
+        renderDetail(match);
+      } catch (err) {
+        console.error(err);
+        detailEl.innerHTML = '<p class="empty">Failed to load product details. Start the backend and refresh this page.</p>';
+      }
+    }
+
+    loadProductFromQuery();
+
+  </script>
+</body>
+</html>

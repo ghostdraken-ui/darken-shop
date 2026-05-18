@@ -79,3 +79,13 @@ body {
     cursor: pointer;
     width: 100%;
 }
+
+.details-link {
+    display: block;
+    background: #49095d;
+    color: white;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 4px;
+    text-decoration: none;
+}
