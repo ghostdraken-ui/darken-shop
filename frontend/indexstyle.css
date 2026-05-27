@@ -80,6 +80,29 @@ body {
     width: 100%;
 }
 
+.product button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.quantity-control {
+    display: grid;
+    gap: 5px;
+    margin-top: 8px;
+    color: #49095d;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-align: left;
+}
+
+.quantity-control input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #d7bee7;
+    border-radius: 5px;
+    font: inherit;
+}
+
 .details-link {
     display: block;
     background: #49095d;

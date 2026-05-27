@@ -53,6 +53,8 @@ const userSchema = new mongoose.Schema({
 const productSchema = new mongoose.Schema({
   name: String,
   price: Number,
+  quantity: Number,
+  description: String,
   image: String,
   owner: String,
   reviews: []
@@ -209,7 +211,7 @@ app.post("/login", async (req, res) => {
 // ADD PRODUCT
 app.post("/add-product", auth, upload.single("image"), async (req, res) => {
   try {
-    const { name, price } = req.body;
+    const { name, price, quantity, description } = req.body;
     
     if (!name || !price) {
       return res.status(400).json({error: "Name and price required"});
@@ -219,9 +221,19 @@ app.post("/add-product", auth, upload.single("image"), async (req, res) => {
       return res.status(400).json({error: "Image file required"});
     }
 
+    const parsedQuantity = quantity === undefined || quantity === ""
+      ? 0
+      : parseInt(quantity, 10);
+
+    if (Number.isNaN(parsedQuantity) || parsedQuantity < 0) {
+      return res.status(400).json({error: "Quantity must be a positive number"});
+    }
+
     const product = new Product({
       name,
       price: parseFloat(price),
+      quantity: parsedQuantity,
+      description: description || "",
       image: req.file.filename,
       owner: req.user.username
     });

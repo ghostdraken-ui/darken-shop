@@ -128,9 +128,14 @@
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
     }
 
+    function cartItemQuantity(item) {
+      return Math.max(1, Number(item.cartQuantity) || 1);
+    }
+
     function renderOrder() {
-      const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
-      cartCountEl.textContent = `${cart.length} item${cart.length === 1 ? '' : 's'}`;
+      const itemCount = cart.reduce((sum, item) => sum + cartItemQuantity(item), 0);
+      const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * cartItemQuantity(item)), 0);
+      cartCountEl.textContent = `${itemCount} item${itemCount === 1 ? '' : 's'}`;
       orderTotalEl.textContent = money(total);
 
       if (!cart.length) {
@@ -145,7 +150,9 @@
           <img src="${escapeHtml(imageSrc(item.image))}" alt="${escapeHtml(item.name)}">
           <div>
             <h3>${escapeHtml(item.name)}</h3>
-            <p>${money(item.price)}</p>
+            <p>${money(item.price)} each</p>
+            <p>Quantity: ${escapeHtml(cartItemQuantity(item))}</p>
+            <p>Subtotal: ${money(Number(item.price || 0) * cartItemQuantity(item))}</p>
           </div>
         </article>
       `).join('');

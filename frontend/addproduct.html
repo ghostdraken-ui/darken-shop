@@ -21,6 +21,8 @@
   <form id="addForm" enctype="multipart/form-data">
     <p><input id="name" name="name" placeholder="Product name" required></p>
     <p><input id="price" name="price" type="number" step="0.01" placeholder="Price" required></p>
+    <p><input id="quantity" name="quantity" type="number" min="1" step="1" placeholder="Quantity" required></p>
+    <p><textarea id="description" name="description" placeholder="Product description" rows="4" required></textarea></p>
     <p><input id="image" name="image" type="file" accept="image/*" required></p>
     <p><button type="submit">Add Product</button></p>
   </form>
@@ -84,6 +86,8 @@ document.getElementById('addForm').addEventListener('submit', function(e){
   const fd = new FormData();
   fd.append('name', document.getElementById('name').value);
   fd.append('price', document.getElementById('price').value);
+  fd.append('quantity', document.getElementById('quantity').value);
+  fd.append('description', document.getElementById('description').value);
   const file = document.getElementById('image').files[0];
   if(file) fd.append('image', file);
 
@@ -143,7 +147,9 @@ async function loadMyProducts() {
         <img src="/uploads/${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}">
         <div>
           <h3>${escapeHtml(product.name)}</h3>
+          <p class="product-description">${escapeHtml(product.description || 'No description added.')}</p>
           <p>${money(product.price)}</p>
+          <p>Quantity: ${escapeHtml(product.quantity ?? 0)}</p>
           <button type="button" onclick="removeMyProduct('${product._id}')">Remove</button>
         </div>
       </article>

@@ -175,6 +175,23 @@ button:disabled {
   background: #d97706;
 }
 
+.quantity-control {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0;
+  color: #49095d;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.quantity-control input {
+  width: 100%;
+  border: 1px solid #d7bee7;
+  border-radius: 7px;
+  padding: 8px;
+  font: inherit;
+}
+
 .cart-list {
   display: grid;
   gap: 14px;

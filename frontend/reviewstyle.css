@@ -181,6 +181,22 @@
       margin-bottom: 16px;
     }
 
+    .quantity-control {
+      display: grid;
+      gap: 6px;
+      margin: 0 0 12px;
+      color: #49095d;
+      font-weight: bold;
+    }
+
+    .quantity-control input {
+      width: 100%;
+      border: 1px solid #d7bee7;
+      border-radius: 7px;
+      padding: 10px;
+      font: inherit;
+    }
+
 .reviews {
       display: grid;
       gap: 14px;

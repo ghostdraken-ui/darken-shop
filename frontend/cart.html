@@ -104,14 +104,56 @@
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
     }
 
-    function addToCart(product) {
-      cart.push({
+    function productKey(product) {
+      return product._id || `${product.name || 'product'}-${product.owner || 'seller'}-${product.price || 0}`;
+    }
+
+    function stockQuantity(product) {
+      return Math.max(0, Number(product.quantity ?? product.stockQuantity) || 0);
+    }
+
+    function cartItemQuantity(item) {
+      return Math.max(1, Number(item.cartQuantity) || 1);
+    }
+
+    function addToCart(product, requestedQuantity = 1) {
+      const stock = stockQuantity(product);
+      const quantity = Math.floor(Number(requestedQuantity) || 0);
+
+      if (stock <= 0) {
+        alert('This product is out of stock');
+        return;
+      }
+
+      if (quantity < 1 || quantity > stock) {
+        alert(`Choose a quantity between 1 and ${stock}`);
+        return;
+      }
+
+      const existing = cart.find(item => productKey(item) === productKey(product));
+
+      if (existing) {
+        const nextQuantity = cartItemQuantity(existing) + quantity;
+
+        if (nextQuantity > stock) {
+          alert(`Only ${stock} available`);
+          return;
+        }
+
+        existing.cartQuantity = nextQuantity;
+        existing.stockQuantity = stock;
+      } else {
+        cart.push({
         _id: product._id,
         name: product.name,
         price: Number(product.price) || 0,
         image: product.image,
-        owner: product.owner
-      });
+          owner: product.owner,
+          cartQuantity: quantity,
+          stockQuantity: stock
+        });
+      }
+
       saveCart();
       renderCart();
       renderRecommendations();
@@ -151,18 +193,27 @@
           <h3>${escapeHtml(product.name)}</h3>
           <p><b>${money(product.price)}</b></p>
           <p>Seller: ${escapeHtml(product.owner)}</p>
-          <button type="button" data-index="${index}">Add to Cart</button>
+          <p>Available: ${escapeHtml(stockQuantity(product))}</p>
+          <label class="quantity-control" for="recommendationQuantity-${index}">
+            Quantity
+            <input id="recommendationQuantity-${index}" type="number" min="1" max="${escapeHtml(stockQuantity(product))}" value="${stockQuantity(product) > 0 ? 1 : 0}" ${stockQuantity(product) <= 0 ? 'disabled' : ''}>
+          </label>
+          <button type="button" data-index="${index}" ${stockQuantity(product) <= 0 ? 'disabled' : ''}>Add to Cart</button>
         </article>
       `).join('');
 
       recommendationsEl.querySelectorAll('button').forEach(button => {
-        button.addEventListener('click', () => addToCart(products[button.dataset.index]));
+        button.addEventListener('click', () => {
+          const quantityInput = document.getElementById(`recommendationQuantity-${button.dataset.index}`);
+          addToCart(products[button.dataset.index], Number(quantityInput.value));
+        });
       });
     }
 
     function renderCart() {
-      const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
-      const countText = `${cart.length} item${cart.length === 1 ? '' : 's'}`;
+      const itemCount = cart.reduce((sum, item) => sum + cartItemQuantity(item), 0);
+      const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * cartItemQuantity(item)), 0);
+      const countText = `${itemCount} item${itemCount === 1 ? '' : 's'}`;
 
       cartCountEl.textContent = countText;
       totalEl.textContent = money(total);
@@ -179,7 +230,9 @@
           <img src="${escapeHtml(imageSrc(item.image))}" alt="${escapeHtml(item.name)}">
           <div>
             <h3>${escapeHtml(item.name)}</h3>
-            <p>${money(item.price)}</p>
+            <p>${money(item.price)} each</p>
+            <p>Quantity: ${escapeHtml(cartItemQuantity(item))}</p>
+            <p>Subtotal: ${money(Number(item.price || 0) * cartItemQuantity(item))}</p>
           </div>
           <button class="remove-btn" type="button" data-index="${index}">Remove</button>
         </article>
